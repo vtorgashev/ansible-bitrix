@@ -1,0 +1,14 @@
+---
+- name: Install GIT
+  become: true
+  apt:
+    name: git
+    state: latest
+##
+- name: Copy gitignore
+  template:
+    src: templates/gitignore
+    dest: "{{app_work_dir}}/.gitignore"
+  tags:
+    - git
+

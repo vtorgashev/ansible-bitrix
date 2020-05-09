@@ -1,10 +1,30 @@
 ---
 - name: Restart PHP-FPM
+  become: true
   service:
     name: php{{php_version}}-fpm
     state: restarted
-    ####
+####
 - name: Restart Nginx
+  become: true
   service:
     name: nginx
+    state: restarted
+####
+- name: Restart DB
+  become: true
+  service:
+    name: mysql
+    state: restarted
+####
+- name: Restart Memcached
+  become: true
+  service:
+    name: memcached
+    state: restarted
+####
+- name: Restart Postfix
+  become: true
+  service:
+    name: postfix
     state: restarted

@@ -1,0 +1,9 @@
+---
+- name: Install Memcached
+  become: true
+  apt:
+    name: memcached
+    state: latest
+  tags:
+    - memcached
+  notify: Restart Memcached

@@ -1,25 +1,91 @@
 ---
-- name: Install PHP {{php_version}} PPA Repo
+- name: Install PHP {{php_version}} PPA Repo for Ubuntu
+  become: true
   apt_repository:
     repo: 'ppa:ondrej/php'
+  when: ansible_os_family == 'Ubuntu'
   tags:
-     - php
+    - php
+##
+
+- name: Install PHP {{php_version}} Repo for Debian
+  become: true
+  shell:
+    apt -y install lsb-release apt-transport-https ca-certificates \
+    && wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg \
+    && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
+  when: ansible_os_family == 'Debian'
+  tags:
+    - php
+
+
   ##
 - name: Install PHP {{php_version}}
-  apt: name=php{{php_version}} state=latest
+  become: true
+  apt: name=php{{php_version}} update_cache=yes state=latest
   ##
 - name: Install PHP packages
   become: true
   apt:
-    name: "{{ item }}"
+    name: [
+      'php{{php_version}}-fpm',
+      'php{{php_version}}-memcached',
+      'php{{php_version}}-memcache',
+      'php{{php_version}}-mbstring',
+      'php{{php_version}}-mysql',
+      'php{{php_version}}-intl',
+      'php{{php_version}}-interbase',
+      'php{{php_version}}-soap',
+      'php{{php_version}}-gd',
+      'php{{php_version}}-imagick',
+      'php{{php_version}}-opcache',
+      'php{{php_version}}-zip'
+    ]
     state: latest
-  with_items:
-    - php{{php_version}}-curl
-    - php{{php_version}}-fpm
-    - php{{php_version}}-intl
-    - php{{php_version}}-mysql
-    - php{{php_version}}-xml
-    - php{{php_version}}-mbstring
   notify: Restart PHP-FPM
   tags:
      - php
+
+- name: Install mcrypt package
+  become: true
+  shell:
+    apt -y install php-pear php-dev libmcrypt-dev gcc make autoconf libc-dev pkg-config \
+    && yes 'y' | pecl install mcrypt-{{mcrypt_version}} \
+    && apt clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+  notify: Restart PHP-FPM
+  tags:
+    - php
+
+
+  ##
+- name: Update php config files
+  become: true
+  template:
+    src: templates/php.ini
+    dest: "/etc/php/{{php_version}}/fpm/conf.d/bitrix-php.ini"
+  tags:
+    - php
+  notify: Restart PHP-FPM
+
+  ##
+- name: link php config
+  become: true
+  template:
+    src: templates/php-cli.ini
+    dest: "/etc/php/{{php_version}}/cli/conf.d/bitrix-php.ini"
+  tags:
+    - php
+  notify: Restart PHP-FPM
+
+##
+- name: Install composer
+  become: true
+  shell: curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  args:
+    creates: /usr/local/bin/composer
+
+##
+- name: Create welcom page
+  template:
+    src: templates/index.php
+    dest: "{{app_work_dir}}/index.php"

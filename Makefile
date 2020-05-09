@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 
-help:
+
+- help:
 	@echo ""
 	@echo "Available tasks:"
 	@echo "    encrypt-vars 				    		Encrypt your vars file"

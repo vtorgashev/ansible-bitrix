@@ -1,0 +1,57 @@
+---
+- name: Install Percona DB server
+  become: true
+  shell: wget https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb
+    && dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb
+    && percona-release setup ps80
+    && yes 'y' | apt -y install percona-server-server
+  tags:
+    - db
+###
+- name: Install python3-mysqldb
+  become: true
+  apt:
+    name: [
+      'python3-mysqldb',
+      'python-mysqldb'
+    ]
+    state: latest
+  tags:
+    - db
+### The Debian OS has a problem with creating a user:
+# unable to connect to database, check login_user and login_password are correct or /root/.my.cnf has the credentials. Exception message: (2012, 'Error in server handshake')
+- name: Create database user with name and password with all database privileges
+  become: true
+  mysql_user:
+    #login_unix_socket: /var/run/mysqld/mysqld.sock
+    #check_implicit_admin: yes
+    #user: "root"
+    name: "{{mysql_user}}"
+    password: "{{mysql_pass}}"
+    priv: '*.*:ALL'
+    state: present
+  when: ansible_os_family == 'Ubuntu'
+  tags:
+    - db
+
+###
+- name:  Create APP DB database
+  become: true
+  mysql_db:
+    #login_unix_socket: /var/run/mysqld/mysqld.sock
+    #check_implicit_admin: yes
+    name: "{{mysql_db}}"
+    login_user: "{{mysql_user}}"
+    login_password: "{{mysql_pass}}"
+    state: present
+  when: ansible_os_family == 'Ubuntu'
+
+###
+- name: Update DB config files
+  become: true
+  template:
+    src: templates/my.cnf
+    dest: /etc/mysql/conf.d/my.cnf
+  tags:
+    - db
+  notify: Restart DB
