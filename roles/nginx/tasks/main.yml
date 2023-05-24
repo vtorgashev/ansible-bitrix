@@ -5,20 +5,22 @@
     name: apache2
     state: absent
     #workaround Todo fix it
-- name: Remove useless dir
-  become: true
-  file:
-    state: absent
-    path: "/var/www/html/"
-  tags:
-    - nginx
-  notify: Restart Nginx
+#- name: Remove useless dir
+#  become: true
+#  file:
+#    state: absent
+#    path: "/var/www/html/"
+#  tags:
+#    - nginx
+#  notify: Restart Nginx
 
 ###
 
 - name: Install Nginx web server
   become: true
-  apt: name=nginx state=latest
+  apt: 
+    name: nginx 
+    state: latest
   notify: Restart Nginx
   tags:
     - nginx
@@ -41,6 +43,26 @@
     src: "/etc/nginx/sites-available/default"
     dest: "/etc/nginx/sites-enabled/default"
     state: link
+  tags:
+    - nginx
+  notify: Restart Nginx
+
+- name: Update snapd 
+  become: true
+  command: snap install core 
+
+- name: install certbot 
+  become: true
+  command: snap install --classic certbot
+
+- name: prepare command 
+  become: true
+  command: ln -s /snap/bin/certbot usr/bin/certbot
+
+
+- name: create certificate 
+  become: true
+  shell: certbot --nginx -d '{{ server_name }}' -d www.' {{ server_name }}' -n -m torgashev@yandex.ru  --agree-tos
   tags:
     - nginx
   notify: Restart Nginx

@@ -30,6 +30,11 @@
     name: [
       'php{{php_version}}-fpm',
       'php{{php_version}}-memcached',
+      'php{{php_version}}-cli',
+      'php{{php_version}}-xml',
+      'php{{php_version}}-mcrypt',
+      'php{{php_version}}-json',
+      'php{{php_version}}-curl',
       'php{{php_version}}-memcache',
       'php{{php_version}}-mbstring',
       'php{{php_version}}-mysql',
