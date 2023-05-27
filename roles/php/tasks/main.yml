@@ -8,15 +8,15 @@
     - php
 ##
 
-- name: Install PHP {{php_version}} Repo for Debian
-  become: true
-  shell:
-    apt -y install lsb-release apt-transport-https ca-certificates \
-    && wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg \
-    && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
-  when: ansible_os_family == 'Debian'
-  tags:
-    - php
+#- name: Install PHP {{php_version}} Repo for Debian
+#  become: true
+#  shell:
+#    apt -y install lsb-release apt-transport-https ca-certificates \
+#    && wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg \
+#    && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
+#  when: ansible_os_family == 'Debian'
+#  tags:
+#    - php
 
 
   ##
@@ -90,7 +90,16 @@
     creates: /usr/local/bin/composer
 
 ##
-- name: Create welcom page
-  template:
-    src: templates/index.php
-    dest: "{{app_work_dir}}/index.php"
+- name: Create project directory
+  become: true
+  file:
+     path: "{{ app_work_dir }}/{{ server_name }}"
+     state: directory
+     owner: www-data
+     group: www-data
+     mode: u=rwx,g=x,o=x
+##
+#- name: Create welcom page
+#  template:
+#    src: templates/index.php
+#    dest: "{{app_work_dir}}/{{ server_name }}/index.php"

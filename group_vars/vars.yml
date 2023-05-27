@@ -29,3 +29,7 @@ sendmail_full_name: "Site name"
 #app_key: "your_app_key"
 #app_name: "app_name"
 #app_url: "your_app_url"
+
+mysql_version_major: "8"
+mysql_version_minor: "0"
+mysql_default_authentication_plugin: "mysql_native_password"

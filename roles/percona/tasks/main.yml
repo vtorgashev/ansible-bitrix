@@ -1,57 +1,100 @@
 ---
-- name: Install Percona DB server
-  become: true
-  shell: wget https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb
-    && dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb
-    && percona-release setup ps80
-    && yes 'y' | apt -y install percona-server-server
-  tags:
-    - db
-###
-- name: Install python3-mysqldb
+# Installation tasks for Ubuntu
+# https://www.percona.com/doc/percona-server/5.7/installation/apt_repo.html
+# https://www.percona.com/doc/percona-server/8.0/installation/apt_repo.html
+
+- name: "Check if percona-server is installed"
+  shell: dpkg -l | grep -i percona-server-server
+  ignore_errors: yes
+  register: percona_server_is_installed
+  changed_when: False
+  
+- name: "Install gnupg"
   become: true
   apt:
-    name: [
-      'python3-mysqldb',
-      'python-mysqldb'
-    ]
-    state: latest
-  tags:
-    - db
-### The Debian OS has a problem with creating a user:
-# unable to connect to database, check login_user and login_password are correct or /root/.my.cnf has the credentials. Exception message: (2012, 'Error in server handshake')
-- name: Create database user with name and password with all database privileges
-  become: true
-  mysql_user:
-    #login_unix_socket: /var/run/mysqld/mysqld.sock
-    #check_implicit_admin: yes
-    #user: "root"
-    name: "{{mysql_user}}"
-    password: "{{mysql_pass}}"
-    priv: '*.*:ALL'
-    state: present
-  when: ansible_os_family == 'Ubuntu'
-  tags:
-    - db
+    name: gnupg2
+    update_cache: yes
 
-###
-- name:  Create APP DB database
+- name: "Install percona-release package"
   become: true
-  mysql_db:
-    #login_unix_socket: /var/run/mysqld/mysqld.sock
-    #check_implicit_admin: yes
-    name: "{{mysql_db}}"
-    login_user: "{{mysql_user}}"
-    login_password: "{{mysql_pass}}"
-    state: present
-  when: ansible_os_family == 'Ubuntu'
+  apt:
+    deb: "https://repo.percona.com/apt/percona-release_latest.{{ ansible_distribution_release }}_all.deb"
 
-###
-- name: Update DB config files
+- name: "Update apt cache"
   become: true
-  template:
-    src: templates/my.cnf
-    dest: /etc/mysql/conf.d/my.cnf
-  tags:
-    - db
-  notify: Restart DB
+  apt:
+    update_cache: yes
+
+# https://www.percona.com/doc/percona-server/LATEST/installation/apt_repo.html
+- name: "Enable Percona repository (Percona version >= 8)"
+  become: true
+  command: "percona-release setup ps{{ mysql_version_major }}{{ mysql_version_minor }}"
+  when: mysql_version_major|int >= 8
+  changed_when: False     # TODO: check for task idempotency
+
+- name: "Install python-is-python3 (Ubuntu >= Focal/20.04)"
+  become: true
+  apt:
+    name: "python-is-python3"
+  when:
+    - ansible_distribution_version is version_compare('20.04', '>=')
+
+- debug:
+    msg: "ansible_python_interpreter major version: {{ ansible_python.version.major }}"
+
+- name: "Install package dependencies for ansible MySQL modules (python 2)"
+  become: true
+  apt:
+    name: "python-mysqldb"
+  when:
+    - ansible_python.version.major == 2     # version is a number, do not quote
+
+- name: "Install package dependencies for ansible MySQL modules (python 3)"
+  become: true
+  apt:
+    name: 
+      - "python3-pymysql"
+      - "python3-mysqldb"
+  when:
+    - ansible_python.version.major == 3     # version is a number, do not quote
+
+- name: "Install percona packages and dependencies on Ubuntu (Percona version < 8)"
+  become: true
+  apt:
+    name:
+      - "percona-server-server-{{ mysql_version_major }}.{{ mysql_version_minor }}"
+      - "percona-server-client-{{ mysql_version_major }}.{{ mysql_version_minor }}"
+      - "percona-toolkit"
+    state: "present"
+  when: mysql_version_major|int < 8
+
+- name: "Install | configure debconf for version 8.0 (Use Legacy Authentication Method)"
+  become: true
+  debconf:
+    name: 'percona-server-server'
+    question: 'percona-server-server/default-auth-override'
+    value: 'Use Legacy Authentication Method (Retain MySQL 5.x Compatibility)'
+    vtype: select
+  changed_when: false
+  when:
+    - mysql_version_major|int >= 8
+    - mysql_default_authentication_plugin is defined
+    - mysql_default_authentication_plugin == "mysql_native_password"
+
+- name: "Install percona packages and dependencies on Ubuntu (Percona version >= 8)"
+  become: true
+  apt:
+    name:
+      - "percona-server-server={{ mysql_version_major }}.{{ mysql_version_minor }}*"
+      - "percona-server-client={{ mysql_version_major }}.{{ mysql_version_minor }}*"
+      - "percona-toolkit"
+    state: "present"
+  when: mysql_version_major|int >= 8
+
+#- name: "Adjust permissions of datadir"
+#  file:
+#    path: "{{ mysql_datadir }}"
+#    owner: "mysql"
+#    group: "mysql"
+#    mode: 0700
+#    state: "directory"

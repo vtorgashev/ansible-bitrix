@@ -54,15 +54,15 @@
 - name: install certbot 
   become: true
   command: snap install --classic certbot
-
+#have a bug todo
 - name: prepare command 
   become: true
-  command: ln -s /snap/bin/certbot usr/bin/certbot
+  shell: ln -s /snap/bin/certbot usr/bin/certbot
 
-
-- name: create certificate 
-  become: true
-  shell: certbot --nginx -d '{{ server_name }}' -d www.' {{ server_name }}' -n -m torgashev@yandex.ru  --agree-tos
-  tags:
-    - nginx
-  notify: Restart Nginx
+#uncomment only for real fqdn 
+#- name: create certificate 
+#  become: true
+#  shell: certbot --nginx -d '{{ server_name }}' -d www.' {{ server_name }}' -n -m torgashev@yandex.ru  --agree-tos
+#  tags:
+#    - nginx
+#  notify: Restart Nginx

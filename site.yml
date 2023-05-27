@@ -1,5 +1,5 @@
 ---
-- hosts: aws
+- hosts: bitrix
 #common options between modules
   #remote_user: root
   gather_facts: yes
